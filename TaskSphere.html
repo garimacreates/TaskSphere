@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSphere</title>
+<style>
+  :root {
+    --text-light: #1a1a2e;
+    --text-dark: #fefefe;
+    --accent-dark: #ff4081;
+  }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #f6d365, #fda085, #ff758c);
+    color: #fff;
+    text-align: center;
+    padding: 40px;
+    transition: all 0.5s ease;
+  }
+
+  body.light { background: #f0f0f0; color: var(--text-light); }
+
+  h1 { font-size: 2.5rem; margin-bottom: 20px; text-shadow: 2px 2px 5px rgba(0,0,0,0.3); }
+
+  button { 
+    padding: 12px 18px; margin: 5px; border: none; background: var(--accent-dark); color: white; border-radius: 8px; cursor: pointer; transition: all 0.3s; 
+  }
+  button:hover { transform: scale(1.05); opacity: 0.8; }
+
+  .todo-container {
+    max-width: 600px;
+    margin: auto;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
+    transition: all 0.5s ease;
+  }
+
+  input[type="text"], select { padding: 12px; border: none; border-radius: 8px; outline: none; font-size: 1rem; margin: 5px; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+  input[type="text"]:focus, select:focus { transform: scale(1.05); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+  .filters { margin: 15px 0; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+  ul { list-style: none; padding: 0; margin-top: 20px; }
+
+  li {
+    margin: 12px 0; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; opacity: 0; transform: translateY(20px);
+    transition: all 0.5s ease, transform 0.3s ease; cursor: grab;
+  }
+
+  li.visible { opacity: 1; transform: translateY(0); }
+  li:hover { transform: scale(1.03); }
+  li.completed { color: #ddd; text-decoration: line-through; }
+
+  .task-text { flex: 1; text-align: left; cursor: pointer; }
+
+  .category-tag { font-size: 0.8rem; background: #ffeb3b; color: #333; padding: 3px 8px; border-radius: 6px; margin-left: 10px; }
+  .priority-tag { font-size: 0.8rem; padding: 3px 8px; border-radius: 6px; margin-left: 10px; color: #fff; font-weight: bold; }
+  .priority-high { background: #ff3d00; }
+  .priority-medium { background: #ffb300; }
+  .priority-low { background: #00bfa5; }
+
+  .delete-btn { background: #ff1744; padding: 8px 12px; border-radius: 6px; transition: transform 0.3s, background 0.3s ease; }
+  .delete-btn:hover { background: #d50000; transform: scale(1.05); }
+
+  .progress-container { width: 100%; background: rgba(255,255,255,0.2); border-radius: 15px; margin: 20px 0 5px 0; height: 25px; overflow: hidden; }
+  .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #ff3d00, #ffb300, #00bfa5); border-radius: 15px; transition: width 0.5s ease; }
+  .progress-text { margin-bottom: 15px; font-weight: bold; }
+
+  .priority-legend { margin-bottom: 15px; display: flex; justify-content: center; gap: 15px; }
+  .priority-legend div { display: flex; align-items: center; gap: 5px; }
+  .priority-legend span.box { width:20px; height:20px; border-radius:5px; display:inline-block; }
+
+  /* Color Picker Styling */
+  .color-picker-container { margin-bottom: 20px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .color-picker-container label { font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>✨TaskSphere</h1>
+
+<!-- Dark/Light & Gradient Color Pickers -->
+<div class="color-picker-container">
+  <button onclick="toggleTheme()">Toggle Dark/Light Mode</button>
+  <label>Start: <input type="color" id="startColor" value="#f6d365"></label>
+  <label>Middle: <input type="color" id="middleColor" value="#fda085"></label>
+  <label>End: <input type="color" id="endColor" value="#ff758c"></label>
+  <button onclick="applyGradient()">Apply Gradient</button>
+</div>
+
+<div class="todo-container">
+  <input type="text" id="taskInput" placeholder="Enter a new task...">
+  <select id="categorySelect">
+    <option value="Work">Work</option>
+    <option value="Study">Study</option>
+    <option value="Personal">Personal</option>
+    <option value="Other">Other</option>
+  </select>
+  <select id="prioritySelect">
+    <option value="High">High</option>
+    <option value="Medium">Medium</option>
+    <option value="Low">Low</option>
+  </select>
+  <button onclick="addTask()">Add</button>
+
+  <div class="filters">
+    <label>Filter: </label>
+    <select id="filterSelect" onchange="renderTasks()">
+      <option value="All">All</option>
+      <option value="Work">Work</option>
+      <option value="Study">Study</option>
+      <option value="Personal">Personal</option>
+      <option value="Other">Other</option>
+    </select>
+
+    <label>Search: </label>
+    <input type="text" id="searchInput" placeholder="Search tasks..." oninput="renderTasks()">
+
+    <label>Sort: </label>
+    <select id="sortSelect" onchange="renderTasks()">
+      <option value="None">None</option>
+      <option value="HighToLow">High → Low</option>
+      <option value="LowToHigh">Low → High</option>
+    </select>
+  </div>
+
+  <!-- Progress Bar -->
+  <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="progress-text" id="progressText">0% Completed</div>
+
+  <!-- Priority Legend -->
+  <div class="priority-legend">
+    <div><span class="box" style="background:#ff3d00"></span><span>High</span></div>
+    <div><span class="box" style="background:#ffb300"></span><span>Medium</span></div>
+    <div><span class="box" style="background:#00bfa5"></span><span>Low</span></div>
+  </div>
+
+  <ul id="taskList"></ul>
+</div>
+
+<script>
+let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+let dragSrcIndex = null;
+let isLightMode = JSON.parse(localStorage.getItem("isLightMode")) || false;
+if(isLightMode) document.body.classList.add("light");
+
+window.onload = () => renderTasks();
+
+function toggleTheme() {
+  isLightMode = !isLightMode;
+  document.body.classList.toggle("light");
+  localStorage.setItem("isLightMode", JSON.stringify(isLightMode));
+}
+
+function applyGradient() {
+  const start = document.getElementById("startColor").value;
+  const middle = document.getElementById("middleColor").value;
+  const end = document.getElementById("endColor").value;
+  document.body.style.background = `linear-gradient(135deg, ${start}, ${middle}, ${end})`;
+}
+
+function addTask() {
+  const text = document.getElementById("taskInput").value.trim();
+  const category = document.getElementById("categorySelect").value;
+  const priority = document.getElementById("prioritySelect").value;
+  if (!text) return;
+  tasks.push({ text, completed: false, category, priority });
+  saveTasks();
+  renderTasks();
+  document.getElementById("taskInput").value = "";
+}
+
+function renderTasks() {
+  const filter = document.getElementById("filterSelect").value;
+  const search = document.getElementById("searchInput").value.toLowerCase();
+  const sort = document.getElementById("sortSelect").value;
+  const taskList = document.getElementById("taskList");
+  taskList.innerHTML = "";
+
+  let displayedTasks = tasks.filter(task =>
+    (filter==="All" || task.category===filter) &&
+    task.text.toLowerCase().includes(search)
+  );
+
+  if(sort==="HighToLow") displayedTasks.sort((a,b)=>priorityValue(b.priority)-priorityValue(a.priority));
+  if(sort==="LowToHigh") displayedTasks.sort((a,b)=>priorityValue(a.priority)-priorityValue(b.priority));
+
+  displayedTasks.forEach((task,index)=>{
+    const li = document.createElement("li");
+    li.classList.add("visible");
+    if(task.completed) li.classList.add("completed");
+    li.setAttribute("draggable","true");
+
+    li.addEventListener("dragstart",()=>dragSrcIndex=index);
+    li.addEventListener("dragover",e=>e.preventDefault());
+    li.addEventListener("drop",()=>moveTask(dragSrcIndex,index));
+
+    const span = document.createElement("span");
+    span.textContent = task.text;
+    span.classList.add("task-text");
+    span.onclick = ()=>{ task.completed=!task.completed; saveTasks(); renderTasks(); };
+
+    const categoryTag = document.createElement("span");
+    categoryTag.textContent = task.category;
+    categoryTag.classList.add("category-tag");
+
+    const priorityTag = document.createElement("span");
+    priorityTag.textContent = task.priority;
+    priorityTag.classList.add("priority-tag",
+      task.priority==="High"?"priority-high":task.priority==="Medium"?"priority-medium":"priority-low");
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent="Delete";
+    deleteBtn.classList.add("delete-btn");
+    deleteBtn.onclick = ()=>{ tasks.splice(index,1); saveTasks(); renderTasks(); };
+
+    li.appendChild(span);
+    li.appendChild(categoryTag);
+    li.appendChild(priorityTag);
+    li.appendChild(deleteBtn);
+    taskList.appendChild(li);
+
+    setTimeout(()=>{ li.style.opacity=1; li.style.transform='translateY(0)'; }, index*100);
+  });
+
+  updateProgress();
+}
+
+function priorityValue(priority){ return priority==="High"?3:priority==="Medium"?2:1; }
+
+function moveTask(fromIndex,toIndex){
+  if(fromIndex===toIndex) return;
+  const [moved] = tasks.splice(fromIndex,1);
+  tasks.splice(toIndex,0,moved);
+  saveTasks(); renderTasks();
+}
+
+function saveTasks(){ localStorage.setItem("tasks",JSON.stringify(tasks)); }
+
+function updateProgress(){
+  if(tasks.length === 0){
+    document.getElementById("progressBar").style.width = "0%";
+    document.getElementById("progressText").textContent = "0% Completed";
+    return;
+  }
+  let completed = tasks.filter(t=>t.completed).length;
+  let percent = Math.round((completed/tasks.length)*100);
+  document.getElementById("progressBar").style.width = percent + "%";
+  document.getElementById("progressText").textContent = percent + "% Completed";
+}
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
